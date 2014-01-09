@@ -6,7 +6,7 @@
 /*   By: cfeijoo <cfeijoo@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2013/12/09 20:36:45 by cfeijoo           #+#    #+#             */
-/*   Updated: 2013/12/13 04:20:10 by cfeijoo          ###   ########.fr       */
+/*   Updated: 2013/12/13 23:00:24 by cfeijoo          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,41 +74,36 @@ static void	display_mtime(struct stat *file_stat)
 	ft_putstr("\t");
 }
 
-static void	display_file_stat(t_list *file_list)
+static void	display_file_stat(struct stat *file_stat)
 {
-	struct stat		file_stat;
-
-	if (stat((char*)file_list->content, &file_stat))
-	{
-		ft_putstr_fd("Cannot access file ", 2);
-		ft_putendl_fd(file_list->content, 2);
-		exit(1);
-	}
-	display_chmod(&file_stat);
-	ft_putlnbr((long int)file_stat.st_nlink);
+	display_chmod(file_stat);
+	ft_putlnbr((long int)file_stat->st_nlink);
 	ft_putstr("\t");
-	display_owner_name(&file_stat);
-	display_group_name(&file_stat);
-	ft_putnbr((int)file_stat.st_size);
+	display_owner_name(file_stat);
+	display_group_name(file_stat);
+	ft_putnbr((int)file_stat->st_size);
 	ft_putstr("\t");
-	display_mtime(&file_stat);
+	display_mtime(file_stat);
 }
 
 static void	display_file_list(t_list *file_list, int recursive, int long_format)
 {
+	t_file_item	*current;
+
 	(void)recursive;
 	while (file_list)
 	{
+		current = (t_file_item*)file_list->content;
 		if (long_format)
-			display_file_stat(file_list);
-		write(1, (char*)(file_list->content), file_list->content_size);
-		write(1, "\n", 1);
+			display_file_stat(current->stat);
+		ft_putendl((char*)(current->name));
 		file_list = file_list->next;
 	}
 }
 
 static void	get_file_list(t_list **file_list, int hide_hidden, char *folder)
 {
+	t_file_item		*file_item;
 	DIR				*dir;
 	struct dirent	*entry;
 
@@ -120,9 +115,18 @@ static void	get_file_list(t_list **file_list, int hide_hidden, char *folder)
 	while ((entry = readdir(dir)) != NULL)
 	{
 		if (!hide_hidden || (entry->d_name)[0] != '.')
-			ft_lstadd(file_list,
-				ft_lstnew(ft_strdup((const char*)(entry->d_name)),
-				ft_strlen(entry->d_name)));
+		{
+			file_item = (t_file_item*)malloc(sizeof(t_file_item));
+			file_item->name = ft_strdup((const char*)(entry->d_name));
+			if (!stat((char*)file_item->name, file_item->stat))
+			{
+				ft_putstr_fd("Cannot access file ", 2);
+				ft_putendl_fd(file_item->name, 2);
+				exit(1);
+			}
+			ft_lstadd(file_list, ft_lstnew(file_item, sizeof(t_file_item)));
+			// Check elements length
+		}
 	}
 	closedir(dir);
 }
